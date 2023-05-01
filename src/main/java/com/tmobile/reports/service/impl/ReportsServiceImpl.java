@@ -20,6 +20,10 @@ public class ReportsServiceImpl implements ReportsService {
     public Map<Integer,Map<String,List<AppInfo>>> fetchAllAppsInfo() {
         List<AppInfo> appInfoList = appInfoRepository.findAll();
         Map<Integer,Map<String,List<AppInfo>>> groupSelection = new HashMap<>();
+        appInfoList.stream().forEach(appInfo -> {
+            appInfo.setSortOrder(appInfo.getSortOrder()==null ?0: appInfo.getSortOrder());
+
+        });
         groupSelection = appInfoList.stream().collect(
                 Collectors.groupingBy(AppInfo::getSortOrder,Collectors.groupingBy(AppInfo::getCategoryName)));
         TreeMap<Integer,Map<String,List<AppInfo>>> groupSelectionSorted = new TreeMap<>(Collections.reverseOrder());
