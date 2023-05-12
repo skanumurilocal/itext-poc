@@ -1,9 +1,8 @@
-package com.tmobile.reports.service.impl;
+package com.example.reports.service.impl;
 
-import com.tmobile.reports.dao.AppInfoRepository;
-import com.tmobile.reports.model.AppInfo;
-import com.tmobile.reports.service.ReportsService;
-import io.swagger.models.auth.In;
+import com.example.reports.dao.AppInfoRepository;
+import com.example.reports.model.AppInfo;
+import com.example.reports.service.ReportsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

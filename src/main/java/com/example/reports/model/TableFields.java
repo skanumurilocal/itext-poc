@@ -1,6 +1,5 @@
-package com.tmobile.reports.model;
+package com.example.reports.model;
 
-import com.tmobile.reports.service.FirstTable;
 import lombok.Data;
 
 import java.util.ArrayList;

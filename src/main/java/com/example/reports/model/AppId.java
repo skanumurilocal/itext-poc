@@ -1,4 +1,4 @@
-package com.tmobile.reports.model;
+package com.example.reports.model;
 
 import lombok.Data;
 

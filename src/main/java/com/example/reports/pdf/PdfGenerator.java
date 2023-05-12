@@ -1,5 +1,7 @@
-package com.tmobile.reports.pdf;
+package com.example.reports.pdf;
 
+import com.example.reports.model.DisplayItem;
+import com.example.reports.model.TableFields;
 import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.events.PdfDocumentEvent;
@@ -11,27 +13,32 @@ import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
-import com.tmobile.reports.model.AppInfo;
-import com.tmobile.reports.model.DisplayItem;
-import com.tmobile.reports.model.TableFields;
-import com.tmobile.reports.service.TableHeaderEventHandler;
+import com.example.reports.model.AppInfo;
+import com.example.reports.service.TableHeaderEventHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Component
 public class PdfGenerator {
 
+    public static final String REQUEST_REFERENCE_ID = "Request Reference ID";
+    public static final String REQUEST_DATE = "Request Date";
+    public static final String SUBJECT_TYPE = "Subject Type";
+    public static final String REQUEST_TYPE = "Request Type";
+    public static final String BILLING_ACCOUNT_NUMBER = "Billing Account Number";
+    public static final String MOBILE_NUMBER = "Mobile Number";
     protected final Color GRAY = new DeviceRgb(245, 245, 245);
     protected final Color GRAY_LINE = new DeviceRgb(212, 212, 212);
     protected final Color WHITE = new DeviceRgb(255, 255, 255);
     public static final String DEST1 = "c:/results/sample/samplePdf.pdf";
 
-    public void generatePdf(Map<Integer, Map<String,List<AppInfo>>> reportData) throws FileNotFoundException {
+    public void generatePdf(Map<Integer, Map<String,List<AppInfo>>> reportData,Map<String,String> resultData) throws FileNotFoundException {
         //Initialize PDF document
         PdfDocument pdf = new PdfDocument(new PdfWriter(DEST1));
 
@@ -40,28 +47,36 @@ public class PdfGenerator {
         TableHeaderEventHandler handler = new TableHeaderEventHandler(document, "Test Customer Document");
         pdf.addEventHandler(PdfDocumentEvent.END_PAGE, handler);
         List<DisplayItem> requesterData = new ArrayList<>();
-        requesterData.add(new DisplayItem("Request Reference ID", "ABCD12345"));
-        requesterData.add(new DisplayItem("Request Date","2023-MARCH-17"));
-        requesterData.add(new DisplayItem("Subject Type","FORMER CUSTOMER"));
-        requesterData.add(new DisplayItem("Request Type","ACCESS PERSONAL DATA"));
+        requesterData.add(new DisplayItem(REQUEST_REFERENCE_ID, resultData.containsValue(REQUEST_REFERENCE_ID) ? resultData.get(REQUEST_REFERENCE_ID):""));
+        requesterData.add(new DisplayItem(REQUEST_DATE,resultData.containsValue(REQUEST_DATE) ? resultData.get(REQUEST_DATE):""));
+        requesterData.add(new DisplayItem(SUBJECT_TYPE,resultData.containsValue(SUBJECT_TYPE) ? resultData.get(SUBJECT_TYPE):""));
+        requesterData.add(new DisplayItem(REQUEST_TYPE,resultData.containsValue(REQUEST_TYPE) ? resultData.get(REQUEST_TYPE):""));
         writeData(document, requesterData,null);
         List<DisplayItem> billingAccountInfo = new ArrayList<>();
-        billingAccountInfo.add(new DisplayItem("Billing Account Number", "98765432"));
-        billingAccountInfo.add(new DisplayItem("Mobile Number","(902)9893033"));
+        billingAccountInfo.add(new DisplayItem(BILLING_ACCOUNT_NUMBER, resultData.containsValue(BILLING_ACCOUNT_NUMBER) ? resultData.get(BILLING_ACCOUNT_NUMBER):""));
+        billingAccountInfo.add(new DisplayItem(MOBILE_NUMBER,resultData.containsValue(MOBILE_NUMBER) ? resultData.get(MOBILE_NUMBER):""));
         writeData(document, billingAccountInfo,null);
         for (Map.Entry<Integer, Map<String, List<AppInfo>>> entry : reportData.entrySet()) {
             System.out.println("Parent Key:  "+entry.getKey()+",  Parent Value: "+ entry.getKey());
 
             List<DisplayItem> regularIdentifierData = new ArrayList<>();
             for (Map.Entry<String, List<AppInfo>> subEntry : entry.getValue().entrySet()) {
-                for(AppInfo appInfo: subEntry.getValue()) {
+                List<AppInfo> distinctValues = subEntry.getValue().stream().filter(distinctByKey(appInfo -> appInfo.getBusinessTerm()))
+                        .sorted(Comparator.comparing(AppInfo::getBusinessTerm))
+                        .collect(Collectors.toList());
+                for(AppInfo appInfo: distinctValues) {
                     System.out.println("    AppID: "+appInfo.getAppId()+"   Child Key : " + subEntry.getKey() + ",  Child Value : " + appInfo.getBusinessTerm());
-                    regularIdentifierData.add(new DisplayItem(appInfo.getBusinessTerm(), ""));
+                    regularIdentifierData.add(new DisplayItem(appInfo.getBusinessTerm(), resultData.containsKey(appInfo.getBusinessTerm())? resultData.get(appInfo.getBusinessTerm()):""));
                 }
                 writeData(document,regularIdentifierData,subEntry.getKey());
             }
         }
        document.close();
+    }
+
+    public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+        final Set<Object> seen = new HashSet<>();
+        return t -> seen.add(keyExtractor.apply(t));
     }
 
     public void writeData(Document document, List<DisplayItem> requesterData, String o) {

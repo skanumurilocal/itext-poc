@@ -1,4 +1,4 @@
-package com.tmobile.reports.config;
+package com.example.reports.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +17,7 @@ public class SwaggerConfig {
         return new Docket(DocumentationType.SWAGGER_2)
                 .select()
                 .paths(PathSelectors.ant("/api/**"))
-                .apis(RequestHandlerSelectors.basePackage("com.tmobile.reports"))
+                .apis(RequestHandlerSelectors.basePackage("com.example.reports"))
                 .build();
     }
 }

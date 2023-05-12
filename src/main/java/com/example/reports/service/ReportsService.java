@@ -1,6 +1,6 @@
-package com.tmobile.reports.service;
+package com.example.reports.service;
 
-import com.tmobile.reports.model.AppInfo;
+import com.example.reports.model.AppInfo;
 
 import java.util.List;
 import java.util.Map;

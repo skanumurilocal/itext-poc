@@ -1,4 +1,4 @@
-package com.tmobile.reports.compartor;
+package com.example.reports.compartor;
 
 import java.util.Comparator;
 
