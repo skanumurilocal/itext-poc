@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class ReportsController {
     private JsonFlattenUtil jsonFlattenUtil;
     @GetMapping(value = {"/download"})
     @ApiOperation("Get Report from Apps")
-    public void downloadReport(@RequestParam String id, HttpServletResponse response) throws FileNotFoundException, JsonProcessingException {
+    public void downloadReport(@RequestParam String id, HttpServletResponse response) throws IOException {
         List<AppRelation> appRelations = appRelationService.getAllRelationsByRequestId(Long.parseLong(id));
         Map<String,String> resultMap = new HashMap<>();
         for (AppRelation appRelation :
@@ -49,7 +50,7 @@ public class ReportsController {
             jsonFlattenUtil.jsonFlattenProcessor(map,resultMap);
         }
         Map<Integer,Map<String, List<AppInfo>>> responseData = reportsService.fetchAllAppsInfo();
-        pdfGenerator.generatePdf(responseData,resultMap);
+        pdfGenerator.generatePdf(responseData,resultMap,response);
     }
 
 

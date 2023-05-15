@@ -6,7 +6,9 @@ import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.events.PdfDocumentEvent;
 import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.utils.PdfMerger;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
@@ -15,9 +17,13 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.example.reports.model.AppInfo;
 import com.example.reports.service.TableHeaderEventHandler;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -36,16 +42,17 @@ public class PdfGenerator {
     protected final Color GRAY = new DeviceRgb(245, 245, 245);
     protected final Color GRAY_LINE = new DeviceRgb(212, 212, 212);
     protected final Color WHITE = new DeviceRgb(255, 255, 255);
-    public static final String DEST1 = "c:/results/sample/samplePdf.pdf";
+    public static final String DEST1 = "c:/results/sample/sample10pages.pdf";
+    public static final String DEST2 = "c:/results/sample/samplePdf.pdf";
 
-    public void generatePdf(Map<Integer, Map<String,List<AppInfo>>> reportData,Map<String,String> resultData) throws FileNotFoundException {
-        //Initialize PDF document
-        PdfDocument pdf = new PdfDocument(new PdfWriter(DEST1));
+    public void generatePdf(Map<Integer, Map<String,List<AppInfo>>> reportData,
+                            Map<String,String> resultData, HttpServletResponse response) throws IOException {
 
+        PdfDocument secondPdf = new PdfDocument(new PdfWriter(DEST2));
         // Initialize document
-        Document document = new Document(pdf);
+        Document document = new Document(secondPdf);
         TableHeaderEventHandler handler = new TableHeaderEventHandler(document, "Test Customer Document");
-        pdf.addEventHandler(PdfDocumentEvent.END_PAGE, handler);
+        secondPdf.addEventHandler(PdfDocumentEvent.END_PAGE, handler);
         List<DisplayItem> requesterData = new ArrayList<>();
         requesterData.add(new DisplayItem(REQUEST_REFERENCE_ID, resultData.containsValue(REQUEST_REFERENCE_ID) ? resultData.get(REQUEST_REFERENCE_ID):""));
         requesterData.add(new DisplayItem(REQUEST_DATE,resultData.containsValue(REQUEST_DATE) ? resultData.get(REQUEST_DATE):""));
@@ -71,7 +78,21 @@ public class PdfGenerator {
                 writeData(document,regularIdentifierData,subEntry.getKey());
             }
         }
-       document.close();
+        secondPdf.close();
+        document.close();
+        response.setContentType(MediaType.APPLICATION_PDF_VALUE);
+        response.setHeader("Content-disposition", "attachment; filename=" + "testFile.pdf");
+        PdfDocument pdf = new PdfDocument(new PdfWriter(response.getOutputStream()));
+        PdfMerger merger = new PdfMerger(pdf);
+        PdfDocument firstSourcePdf = new PdfDocument(new PdfReader(DEST1));
+        merger.merge(firstSourcePdf, 1, firstSourcePdf.getNumberOfPages());
+        PdfDocument secondSourcePdf = new PdfDocument(new PdfReader(DEST2));
+        merger.merge(secondSourcePdf, 1, secondSourcePdf.getNumberOfPages());
+        merger.close();
+       firstSourcePdf.close();
+        secondSourcePdf.close();
+       pdf.close();
+
     }
 
     public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
