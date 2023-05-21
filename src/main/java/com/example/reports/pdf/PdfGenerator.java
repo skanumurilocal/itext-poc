@@ -1,5 +1,6 @@
 package com.example.reports.pdf;
 
+import com.example.reports.exception.ReportsException;
 import com.example.reports.model.DisplayItem;
 import com.example.reports.model.TableFields;
 import com.itextpdf.kernel.colors.Color;
@@ -48,50 +49,74 @@ public class PdfGenerator {
     public void generatePdf(Map<Integer, Map<String,List<AppInfo>>> reportData,
                             Map<String,String> resultData, HttpServletResponse response) throws IOException {
 
-        PdfDocument secondPdf = new PdfDocument(new PdfWriter(DEST2));
-        // Initialize document
-        Document document = new Document(secondPdf);
-        TableHeaderEventHandler handler = new TableHeaderEventHandler(document, "Test Customer Document");
-        secondPdf.addEventHandler(PdfDocumentEvent.END_PAGE, handler);
-        List<DisplayItem> requesterData = new ArrayList<>();
-        requesterData.add(new DisplayItem(REQUEST_REFERENCE_ID, resultData.containsValue(REQUEST_REFERENCE_ID) ? resultData.get(REQUEST_REFERENCE_ID):""));
-        requesterData.add(new DisplayItem(REQUEST_DATE,resultData.containsValue(REQUEST_DATE) ? resultData.get(REQUEST_DATE):""));
-        requesterData.add(new DisplayItem(SUBJECT_TYPE,resultData.containsValue(SUBJECT_TYPE) ? resultData.get(SUBJECT_TYPE):""));
-        requesterData.add(new DisplayItem(REQUEST_TYPE,resultData.containsValue(REQUEST_TYPE) ? resultData.get(REQUEST_TYPE):""));
-        writeData(document, requesterData,null);
-        List<DisplayItem> billingAccountInfo = new ArrayList<>();
-        billingAccountInfo.add(new DisplayItem(BILLING_ACCOUNT_NUMBER, resultData.containsValue(BILLING_ACCOUNT_NUMBER) ? resultData.get(BILLING_ACCOUNT_NUMBER):""));
-        billingAccountInfo.add(new DisplayItem(MOBILE_NUMBER,resultData.containsValue(MOBILE_NUMBER) ? resultData.get(MOBILE_NUMBER):""));
-        writeData(document, billingAccountInfo,null);
-        for (Map.Entry<Integer, Map<String, List<AppInfo>>> entry : reportData.entrySet()) {
-            System.out.println("Parent Key:  "+entry.getKey()+",  Parent Value: "+ entry.getKey());
+        generatePdf(reportData, resultData);
+        mergePdf(response);
 
-            List<DisplayItem> regularIdentifierData = new ArrayList<>();
-            for (Map.Entry<String, List<AppInfo>> subEntry : entry.getValue().entrySet()) {
-                List<AppInfo> distinctValues = subEntry.getValue().stream().filter(distinctByKey(appInfo -> appInfo.getBusinessTerm()))
-                        .sorted(Comparator.comparing(AppInfo::getBusinessTerm))
-                        .collect(Collectors.toList());
-                for(AppInfo appInfo: distinctValues) {
-                    System.out.println("    AppID: "+appInfo.getAppId()+"   Child Key : " + subEntry.getKey() + ",  Child Value : " + appInfo.getBusinessTerm());
-                    regularIdentifierData.add(new DisplayItem(appInfo.getBusinessTerm(), resultData.containsKey(appInfo.getBusinessTerm())? resultData.get(appInfo.getBusinessTerm()):""));
-                }
-                writeData(document,regularIdentifierData,subEntry.getKey());
-            }
-        }
-        secondPdf.close();
-        document.close();
+    }
+
+    private void mergePdf(HttpServletResponse response) throws IOException {
         response.setContentType(MediaType.APPLICATION_PDF_VALUE);
         response.setHeader("Content-disposition", "attachment; filename=" + "testFile.pdf");
         PdfDocument pdf = new PdfDocument(new PdfWriter(response.getOutputStream()));
         PdfMerger merger = new PdfMerger(pdf);
-        PdfDocument firstSourcePdf = new PdfDocument(new PdfReader(DEST1));
-        merger.merge(firstSourcePdf, 1, firstSourcePdf.getNumberOfPages());
-        PdfDocument secondSourcePdf = new PdfDocument(new PdfReader(DEST2));
-        merger.merge(secondSourcePdf, 1, secondSourcePdf.getNumberOfPages());
-        merger.close();
-       firstSourcePdf.close();
-        secondSourcePdf.close();
-       pdf.close();
+        PdfDocument firstSourcePdf = null;
+        PdfDocument secondSourcePdf = null;
+        try {
+            firstSourcePdf = new PdfDocument(new PdfReader(DEST1));
+            merger.merge(firstSourcePdf, 1, firstSourcePdf.getNumberOfPages());
+            secondSourcePdf = new PdfDocument(new PdfReader(DEST2));
+            merger.merge(secondSourcePdf, 1, secondSourcePdf.getNumberOfPages());
+        } finally {
+            merger.close();
+            if(firstSourcePdf!=null)
+                firstSourcePdf.close();
+            if(secondSourcePdf!=null)
+                secondSourcePdf.close();
+            pdf.close();
+        }
+
+    }
+
+    private void generatePdf(Map<Integer, Map<String, List<AppInfo>>> reportData, Map<String, String> resultData) throws FileNotFoundException {
+        PdfDocument secondPdf = new PdfDocument(new PdfWriter(DEST2));
+        // Initialize document
+        Document document = new Document(secondPdf);
+        try {
+            TableHeaderEventHandler handler = new TableHeaderEventHandler(document, "Test Customer Document");
+            secondPdf.addEventHandler(PdfDocumentEvent.END_PAGE, handler);
+            List<DisplayItem> requesterData = new ArrayList<>();
+            requesterData.add(new DisplayItem(REQUEST_REFERENCE_ID, resultData.containsValue(REQUEST_REFERENCE_ID) ? resultData.get(REQUEST_REFERENCE_ID):""));
+            requesterData.add(new DisplayItem(REQUEST_DATE, resultData.containsValue(REQUEST_DATE) ? resultData.get(REQUEST_DATE):""));
+            requesterData.add(new DisplayItem(SUBJECT_TYPE, resultData.containsValue(SUBJECT_TYPE) ? resultData.get(SUBJECT_TYPE):""));
+            requesterData.add(new DisplayItem(REQUEST_TYPE, resultData.containsValue(REQUEST_TYPE) ? resultData.get(REQUEST_TYPE):""));
+            writeData(document, requesterData,null);
+            List<DisplayItem> billingAccountInfo = new ArrayList<>();
+            billingAccountInfo.add(new DisplayItem(BILLING_ACCOUNT_NUMBER, resultData.containsValue(BILLING_ACCOUNT_NUMBER) ? resultData.get(BILLING_ACCOUNT_NUMBER):""));
+            billingAccountInfo.add(new DisplayItem(MOBILE_NUMBER, resultData.containsValue(MOBILE_NUMBER) ? resultData.get(MOBILE_NUMBER):""));
+            writeData(document, billingAccountInfo,null);
+            for (Map.Entry<Integer, Map<String, List<AppInfo>>> entry : reportData.entrySet()) {
+                System.out.println("Parent Key:  "+entry.getKey()+",  Parent Value: "+ entry.getKey());
+
+                List<DisplayItem> regularIdentifierData = new ArrayList<>();
+                for (Map.Entry<String, List<AppInfo>> subEntry : entry.getValue().entrySet()) {
+                    List<AppInfo> distinctValues = subEntry.getValue().stream().filter(distinctByKey(appInfo -> appInfo.getBusinessTerm()))
+                            .sorted(Comparator.comparing(AppInfo::getBusinessTerm))
+                            .collect(Collectors.toList());
+                    for(AppInfo appInfo: distinctValues) {
+                        System.out.println("    AppID: "+appInfo.getAppId()+"   Child Key : " + subEntry.getKey() + ",  Child Value : " + appInfo.getBusinessTerm());
+                        if(resultData.containsKey(appInfo.getBusinessTerm()))
+                            regularIdentifierData.add(new DisplayItem(appInfo.getBusinessTerm(), resultData.containsKey(appInfo.getBusinessTerm())? resultData.get(appInfo.getBusinessTerm()):""));
+                    }
+                    if(regularIdentifierData.size()>0)
+                    writeData(document,regularIdentifierData,subEntry.getKey());
+                }
+            }
+        } catch (Exception e) {
+            throw new ReportsException(e);
+        } finally {
+            secondPdf.close();
+            document.close();
+        }
 
     }
 

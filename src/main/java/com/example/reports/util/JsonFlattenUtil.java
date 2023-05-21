@@ -25,6 +25,7 @@ public class JsonFlattenUtil {
                 || value instanceof Boolean || value instanceof Double) {
             if(resultMap.containsKey(key)){
                 StringBuilder newString= new StringBuilder(resultMap.get(key));
+                if(newString.indexOf(value.toString())==-1)
                 newString.append(",").append(value);
                 resultMap.put(key,newString.toString());
             }else{
